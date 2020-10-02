@@ -1,0 +1,4 @@
+services:
+  plugin.manager.wordpress_migration_extension_plugin:
+    class: Drupal\wordpress_migrate\Plugin\WordpressMigrationExtensionPluginManager
+    parent: default_plugin_manager

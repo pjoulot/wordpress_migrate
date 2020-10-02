@@ -4,6 +4,7 @@ namespace Drupal\wordpress_migrate;
 
 use Drupal\migrate_plus\Entity\Migration;
 use Drupal\migrate_plus\Entity\MigrationGroup;
+use Drupal\migrate_plus\Entity\MigrationInterface;
 
 /**
  * Functionality to construct WordPress migrations from broad configuration
@@ -127,6 +128,7 @@ class WordPressMigrationGenerator {
       $this->authorID = $this->configuration['prefix'] . 'wordpress_authors';
       $migration      = static::createEntityFromPlugin('wordpress_authors', $this->authorID);
       $migration->set('migration_group', $this->configuration['group_id']);
+      $this->alterMigration($migration, 'authors');
       $migration->save();
       $this->uidMapping = [
         'plugin' => 'migration_lookup',
@@ -142,6 +144,7 @@ class WordPressMigrationGenerator {
     $process = $migration->get('process');
     $process['uid'] = $this->uidMapping;
     $migration->set('process', $process);
+    $this->alterMigration($migration, 'attachments');
     $migration->save();
 
     // Setup vocabulary migrations if requested.
@@ -155,6 +158,7 @@ class WordPressMigrationGenerator {
         'default_value' => $this->configuration['tag_vocabulary'],
       ];
       $migration->set('process', $process);
+      $this->alterMigration($migration, 'tags');
       $migration->save();
     }
     if ($this->configuration['category_vocabulary']) {
@@ -167,6 +171,7 @@ class WordPressMigrationGenerator {
         'default_value' => $this->configuration['category_vocabulary'],
       ];
       $migration->set('process', $process);
+      $this->alterMigration($migration, 'categories');
       $migration->save();
     }
 
@@ -266,6 +271,7 @@ class WordPressMigrationGenerator {
       $dependencies[] = $this->authorID;
     }
     $migration->set('migration_dependencies', ['required' => $dependencies]);
+    $this->alterMigration($migration, $wordpress_type);
     $migration->save();
 
     // Also create a comment migration, if the content type has a comment field.
@@ -287,6 +293,7 @@ class WordPressMigrationGenerator {
         $process['field_name'][0]['default_value']   = $field_name;
         $migration->set('process', $process);
         $migration->set('migration_dependencies', ['required' => [$content_id]]);
+        $this->alterMigration($migration, 'comment_' . $wordpress_type);
         $migration->save();
         break;
       }
@@ -352,6 +359,24 @@ class WordPressMigrationGenerator {
     $entity_array['migration_dependencies'] = $migration_plugin->getMigrationDependencies();
     $migration_entity                       = Migration::create($entity_array);
     return $migration_entity;
+  }
+
+  /**
+   * Function to alter the migration depending on the selected plugins.
+   *
+   * @param Drupal\migrate_plus\Entity\MigrationInterface $migration
+   *   The migration entity.
+   * @param string $wordpress_type
+   *   The wordpress type related to the migration.
+   */
+  public function alterMigration(MigrationInterface &$migration, $wordpress_type) {
+    foreach ($this->configuration['extensions'] as $extension) {
+      $instance_plugin = \Drupal::service('plugin.manager.wordpress_migration_extension_plugin')->createInstance($extension, []);
+      $allowed_content = $instance_plugin->getApplicableContent();
+      if (in_array($wordpress_type, $allowed_content) && $instance_plugin->isActive($this->configuration)) {
+        $instance_plugin->alterMigration($migration);
+      }
+    }
   }
 
 }
