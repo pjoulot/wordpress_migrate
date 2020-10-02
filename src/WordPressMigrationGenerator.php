@@ -228,6 +228,7 @@ class WordPressMigrationGenerator {
       'regex' => TRUE,
     ];
     $process['uid']         = $this->uidMapping;
+    $process['body/value'][0]['filter_autop'] = boolval($this->configuration[$wordpress_type]['filter_autop']);
     $process['body/format'] = [
       'plugin' => 'default_value',
       'default_value' => $this->configuration[$wordpress_type]['text_format'],

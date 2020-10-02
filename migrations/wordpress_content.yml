@@ -67,7 +67,10 @@ process:
   title: title
   # @todo: Will need process plugin to rewrite links/img refs.
   # @link https://www.drupal.org/node/2742279
-  'body/value': content
+  'body/value':
+    plugin: wp_content
+    source: content
+    filter_autop: true
   'body/summary': excerpt
   created:
     plugin: callback

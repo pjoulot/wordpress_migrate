@@ -31,6 +31,12 @@ class ContentTypeForm extends FormBase {
       '#default_value' => array_key_exists('filtered_html', $options) ? 'filtered_html' : NULL,
       '#options' => $options,
     ];
+    $form['filter_autop'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Use smart conversion for line breaks'),
+      '#default_value' => TRUE,
+      '#description' => 'Converts line breaks into &lt;p&gt; and &lt;br&gt; in an intelligent fashion.',
+    ];
     return $form;
   }
 
@@ -41,6 +47,7 @@ class ContentTypeForm extends FormBase {
     $cached_values = $form_state->getTemporaryValue('wizard');
     $content_type = $cached_values['wordpress_content_type'];
     $cached_values[$content_type]['text_format'] = $form_state->getValue('text_format');
+    $cached_values[$content_type]['filter_autop'] = $form_state->getValue('filter_autop');
     $form_state->setTemporaryValue('wizard', $cached_values);
   }
 
