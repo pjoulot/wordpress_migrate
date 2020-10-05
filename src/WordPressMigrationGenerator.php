@@ -147,6 +147,19 @@ class WordPressMigrationGenerator {
     $this->alterMigration($migration, 'attachments');
     $migration->save();
 
+    if ($this->configuration['use_media']) {
+      $this->mediaImageID = $this->configuration['prefix'] . 'wordpress_media_image';
+      $migration = static::createEntityFromPlugin('wordpress_media_image', $this->mediaImageID);
+      $migration->set('migration_group', $this->configuration['group_id']);
+      $process = $migration->get('process');
+      $process['uid'] = $this->uidMapping;
+      $process['field_media_image/target_id'][0]['migration'] = $this->attachmentID;
+      $process['thumbnail/target_id'][0]['migration'] = $this->attachmentID;
+      $migration->set('process', $process);
+      $this->alterMigration($migration, 'media_image');
+      $migration->save();
+    }
+
     // Setup vocabulary migrations if requested.
     if ($this->configuration['tag_vocabulary']) {
       $this->tagsID = $this->configuration['prefix'] . 'wordpress_tags';
@@ -260,12 +273,23 @@ class WordPressMigrationGenerator {
       }
     }
     if ($this->configuration['image_field']) {
-      $process[$this->configuration['image_field']] = [
-        'plugin' => 'migration',
-        'migration' => $this->attachmentID,
-        'source' => 'thumbnail_id',
-      ];
-      $dependencies[] = $this->attachmentID;
+      // Set the right migration depending if the user chose to use media.
+      if ($this->configuration['use_media']) {
+        $process[$this->configuration['image_field']] = [
+          'plugin' => 'migration_lookup',
+          'migration' => $this->mediaImageID,
+          'source' => 'thumbnail_id',
+        ];
+        $dependencies[] = $this->mediaImageID;
+      }
+      else {
+        $process[$this->configuration['image_field']] = [
+          'plugin' => 'migration_lookup',
+          'migration' => $this->attachmentID,
+          'source' => 'thumbnail_id',
+        ];
+        $dependencies[] = $this->attachmentID;
+      }
     }
     $migration->set('process', $process);
     if (!empty($this->authorID)) {

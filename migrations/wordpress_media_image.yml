@@ -1,0 +1,81 @@
+id: wordpress_media_image
+label: 'Import Media Images from WordPress images'
+migration_tags:
+  - WordPress
+source:
+  plugin: url
+  data_fetcher_plugin: http
+  data_parser_plugin: xml
+  item_selector: '/rss/channel/item[wp:post_type="attachment"]'
+  fields:
+    -
+      name: title
+      label: Attachment title
+      selector: title
+    -
+      name: post_id
+      label: Unique content ID
+      selector: wp:post_id
+    -
+      name: content
+      label: Description of the file
+      selector: content:encoded
+    -
+      name: excerpt
+      label: Caption for the file
+      selector: excerpt:encoded
+    -
+      name: pubDate
+      label: Publish date of the file
+      selector: pubDate
+    -
+      name: post_date
+      label: Post date of the file
+      selector: wp:post_date
+    -
+      name: creator
+      label: Username of the content creator
+      selector: dc:creator
+    -
+      name: attachment_url
+      label: Full URL of the file on the source system
+      selector: wp:attachment_url
+    -
+      name: alt
+      label: Alt text for an image
+      # @todo: Make sure wp:meta_key is _wp_attachment_image_alt
+      # @link https://www.drupal.org/node/2742275
+      selector: wp:postmeta/wp:meta_value
+  ids:
+    post_id:
+      type: integer
+process:
+  pseudo_destination_filename:
+    -
+      plugin: callback
+      callable: basename
+      source: attachment_url
+    -
+      plugin: skip_on_empty
+      method: row
+      message: 'Cannot import empty filename.'
+  pseudo_destination_path:
+    -
+      plugin: concat
+      source:
+        - '@pseudo_destination_filename'
+  name: '@pseudo_destination_filename'
+  field_media_image/target_id:
+    plugin: migration_lookup
+    migration: wordpress_attachments
+    source: post_id
+  thumbnail/target_id:
+    plugin: migration_lookup
+    migration: wordpress_attachments
+    source: post_id
+destination:
+  plugin: 'entity:media'
+  default_bundle: image
+migration_dependencies:
+  required:
+    - wordpress_attachments

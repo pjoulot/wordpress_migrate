@@ -2,13 +2,41 @@
 
 namespace Drupal\wordpress_migrate_ui\Form;
 
+use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Simple wizard step form.
  */
 class ImageSelectForm extends FormBase {
+
+  /**
+   * The entity field manager.
+   *
+   * @var \Drupal\Core\Entity\EntityFieldManagerInterface
+   */
+  protected $entityFieldeManager;
+
+  /**
+   * Constructs a ImageSelectForm object.
+   *
+   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager
+   *   The entity field manager.
+   */
+  public function __construct(EntityFieldManagerInterface $entity_field_manager) {
+    $this->entityFieldeManager = $entity_field_manager;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('entity_field.manager')
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -30,16 +58,17 @@ class ImageSelectForm extends FormBase {
       '#markup' => $this->t('Here you may choose the Drupal image field to import Wordpress featured images into.'),
     ];
 
-    // @todo this should be dependency injection.
-    $field_map = \Drupal::service('entity_field.manager')->getFieldMap();
+    $fields = [];
+    if (!empty($cached_values['post']['type'])) {
+      $fields = $this->entityFieldeManager->getFieldDefinitions('node', $cached_values['post']['type']);
+    }
     $options = ['' => $this->t('Do not import')];
-    foreach($field_map as $entity_type => $fields) {
-      if ($entity_type == 'node') {
-        foreach($fields as $field_name => $field_settings) {
-          if ($field_settings['type'] == 'image') {
-            $options[$field_name] = $field_name;
-          }
-        }
+    foreach($fields as $field) {
+      if (!empty($cached_values['image_media_type']) && $field->getType() == 'entity_reference' && $field->getSettings()['target_type'] === 'media') {
+        $options[$field->getName()] = $field->getLabel();
+      }
+      elseif (empty($cached_values['image_media_type']) && $field->getType() == 'image') {
+        $options[$field->getName()] = $field->getLabel();
       }
     }
 

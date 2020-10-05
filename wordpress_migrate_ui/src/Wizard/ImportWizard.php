@@ -26,6 +26,10 @@ class ImportWizard extends FormWizardBase {
         'form' => 'Drupal\wordpress_migrate_ui\Form\AuthorForm',
         'title' => $this->t('Authors'),
       ],
+      'attachments' => [
+        'form' => 'Drupal\wordpress_migrate_ui\Form\AttachmentForm',
+        'title' => $this->t('Attachments'),
+      ],
       'vocabulary_select' => [
         'form' => 'Drupal\wordpress_migrate_ui\Form\VocabularySelectForm',
         'title' => $this->t('Vocabularies'),
