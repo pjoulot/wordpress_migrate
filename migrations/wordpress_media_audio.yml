@@ -1,5 +1,5 @@
-id: wordpress_media_image
-label: 'Import Media Images from WordPress images'
+id: wordpress_media_audio
+label: 'Import Media Audio from WordPress audio files'
 migration_tags:
   - WordPress
 source:
@@ -40,12 +40,6 @@ source:
       name: attachment_url
       label: Full URL of the file on the source system
       selector: wp:attachment_url
-    -
-      name: alt
-      label: Alt text for an image
-      # @todo: Make sure wp:meta_key is _wp_attachment_image_alt
-      # @link https://www.drupal.org/node/2742275
-      selector: wp:postmeta/wp:meta_value
   ids:
     post_id:
       type: integer
@@ -65,7 +59,7 @@ process:
       source:
         - '@pseudo_destination_filename'
   name: '@pseudo_destination_filename'
-  field_media_image/target_id:
+  field_media_audio_file/target_id:
     plugin: migration_lookup
     migration: wordpress_attachments
     source: post_id
@@ -75,7 +69,7 @@ process:
     source: post_id
 destination:
   plugin: 'entity:media'
-  default_bundle: image
+  default_bundle: audio
 migration_dependencies:
   required:
     - wordpress_attachments

@@ -148,16 +148,50 @@ class WordPressMigrationGenerator {
     $migration->save();
 
     if ($this->configuration['use_media']) {
-      $this->mediaImageID = $this->configuration['prefix'] . 'wordpress_media_image';
-      $migration = static::createEntityFromPlugin('wordpress_media_image', $this->mediaImageID);
-      $migration->set('migration_group', $this->configuration['group_id']);
-      $process = $migration->get('process');
-      $process['uid'] = $this->uidMapping;
-      $process['field_media_image/target_id'][0]['migration'] = $this->attachmentID;
-      $process['thumbnail/target_id'][0]['migration'] = $this->attachmentID;
-      $migration->set('process', $process);
-      $this->alterMigration($migration, 'media_image');
-      $migration->save();
+      $media_types = [
+        'image' => [
+          'migration_id' => 'mediaImageID',
+        ],
+        'audio' => [
+          'migration_id' => 'mediaAudioID',
+        ],
+        'document' => [
+          'migration_id' => 'mediaDocumentID',
+        ],
+      ];
+      foreach ($media_types as $media_type_id => $media_type) {
+        $config_key = $media_type_id . '_media_type';
+        if ($this->configuration[$config_key]) {
+          $this->{$media_type['migration_id']} = $this->configuration['prefix'] . 'wordpress_media_' . $media_type_id;
+          $migration = static::createEntityFromPlugin('wordpress_media_' . $media_type_id, $this->{$media_type['migration_id']});
+          $migration->set('migration_group', $this->configuration['group_id']);
+          $source                   = $migration->get('source');
+          $source['item_selector'] .= '[wp:post_type="attachment" and (';
+          $supported_extensions = explode(' ', $this->configuration[$media_type_id . '_media_extensions']);
+          $ext_condition = '';
+          foreach ($supported_extensions as $ext) {
+            if (!empty($ext)) {
+              $ext_condition_part = 'wp:attachment_url[".' . $ext . '" = substring(., string-length(.) - string-length(".' . $ext . '") +1)]';
+              $ext_condition .= (!empty($ext_condition)) ? ' or ' . $ext_condition_part : $ext_condition_part;
+            }
+          }
+          $source['item_selector'] .= $ext_condition . ')]';
+          $migration->set('source', $source);
+          $process = $migration->get('process');
+          $process['uid'] = $this->uidMapping;
+          $process[$this->configuration[$config_key . '_field'] . '/target_id'][0]['migration'] = $this->attachmentID;
+          $process['thumbnail/target_id'][0]['migration'] = $this->attachmentID;
+          $migration->set('process', $process);
+          $destination = $migration->get('destination');
+          $destination['default_bundle'] = $this->configuration[$config_key];
+          $migration->set('destination', $destination);
+          $dependencies = [];
+          $dependencies[] = $this->attachmentID;
+          $migration->set('migration_dependencies', ['required' => $dependencies]);
+          $this->alterMigration($migration, 'media_' . $media_type_id);
+          $migration->save();
+        }
+      }
     }
 
     // Setup vocabulary migrations if requested.

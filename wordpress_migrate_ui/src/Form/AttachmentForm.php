@@ -97,25 +97,116 @@ class AttachmentForm extends FormBase {
         ],
       ];
 
-      $form['media']['container']['image'] = [
-        '#type' => 'details',
-        '#title' => t('Image'),
-        '#open' => TRUE,
+
+      $media_types = [
+        'image' => [
+          'name' => 'Image',
+          'source_plugin_id' => 'image',
+          'callback' => 'updateImageExtensions',
+        ],
+        'audio' => [
+          'name' => 'Audio',
+          'source_plugin_id' => 'audio_file',
+          'callback' => 'updateAudioExtensions',
+        ],
+        'document' => [
+          'name' => 'Document',
+          'source_plugin_id' => 'file',
+          'callback' => 'updateDocumentExtensions',
+        ],
       ];
 
-      $media_types[] = $this->t("Don't import");
-      $media_types = array_merge($media_types, $this->getMediaTypeBySourcePluginId('image'));
-      $form['media']['container']['image']['image_media_type'] = [
-        '#type' => 'select',
-        '#title' => $this->t('Import WordPress images as'),
-        '#options' => $media_types,
-      ];
+      // @todo Supports more media types like video.
 
-      // @todo Supports more media types like document, audio or video.
+      foreach ($media_types as $media_type_key => $media_type) {
+        $form['media']['container'][$media_type_key] = [
+          '#type' => 'details',
+          '#title' => $media_type['name'],
+          '#open' => TRUE,
+        ];
+
+        $ajax_wrapper = 'media-' . $media_type_key . '-extensions-wrapper';
+
+        $media_types_options = [
+          0 => $this->t("Don't import")
+        ];
+        $available_media_types = $this->getMediaTypeBySourcePluginId($media_type['source_plugin_id']);
+        $media_types_options = array_merge($media_types_options, $available_media_types);
+        $form['media']['container'][$media_type_key][$media_type_key .'_media_type'] = [
+          '#type' => 'select',
+          '#title' => $this->t('Import WordPress @media_types as', ['@media_type' => strtolower($media_type['name'])]),
+          '#options' => $media_types_options,
+          '#ajax' => [
+            'callback' => [$this, $media_type['callback']],
+            'event' => 'change',
+            'wrapper' => $ajax_wrapper,
+            'method' => 'replace',
+          ],
+        ];
+
+        $form['media']['container'][$media_type_key]['extensions_wrapper'] = [
+          '#type' => 'container',
+          '#attributes' => [
+            'id' => $ajax_wrapper,
+          ]
+        ];
+
+        $form['media']['container'][$media_type_key]['extensions_wrapper'][$media_type_key . '_media_extensions'] = [
+          '#type' => 'textfield',
+          '#title' => $this->t('Extensions'),
+          '#description' => $this->t('The attachments matching those extensions will be imported as @media_types. If you need to add more, edit your field first.', ['@media_type' => strtolower($media_type['name'])]),
+          '#default_value' => '',
+        ];
+      }
 
     }
 
     return $form;
+  }
+
+  /**
+   * The callback function to update the extensions based on the chosen media type.
+   */
+  public function updateImageExtensions(array $form, FormStateInterface $form_state) {
+    $form_state->setRebuild(TRUE);
+
+    if (!empty($form_state->getValue('image_media_type'))) {
+      $default_media_type = !empty($form_state->getValue('image_media_type')) ? $form_state->getValue('image_media_type') : NULL;
+      $form['media']['container']['image']['extensions_wrapper']['image_media_extensions']['#required'] = !empty($default_media_type);
+      $form['media']['container']['image']['extensions_wrapper']['image_media_extensions']['#value'] = !empty($default_media_type) ? $this->getSourceFieldInfos($default_media_type)['supported_extensions'] : '';
+    }
+
+    return $form['media']['container']['image']['extensions_wrapper'];
+  }
+
+  /**
+   * The callback function to update the extensions based on the chosen media type.
+   */
+  public function updateAudioExtensions(array $form, FormStateInterface $form_state) {
+    $form_state->setRebuild(TRUE);
+
+    if (!empty($form_state->getValue('audio_media_type'))) {
+      $default_media_type = !empty($form_state->getValue('audio_media_type')) ? $form_state->getValue('audio_media_type') : NULL;
+      $form['media']['container']['audio']['extensions_wrapper']['audio_media_extensions']['#required'] = !empty($default_media_type);
+      $form['media']['container']['audio']['extensions_wrapper']['audio_media_extensions']['#value'] = !empty($default_media_type) ? $this->getSourceFieldInfos($default_media_type)['supported_extensions'] : '';
+    }
+
+    return $form['media']['container']['audio']['extensions_wrapper'];
+  }
+
+  /**
+   * The callback function to update the extensions based on the chosen media type.
+   */
+  public function updateDocumentExtensions(array $form, FormStateInterface $form_state) {
+    $form_state->setRebuild(TRUE);
+
+    if (!empty($form_state->getValue('document_media_type'))) {
+      $default_media_type = !empty($form_state->getValue('document_media_type')) ? $form_state->getValue('document_media_type') : NULL;
+      $form['media']['container']['document']['extensions_wrapper']['document_media_extensions']['#required'] = !empty($default_media_type);;
+      $form['media']['container']['document']['extensions_wrapper']['document_media_extensions']['#value'] = !empty($default_media_type) ? $this->getSourceFieldInfos($default_media_type)['supported_extensions'] : '';
+    }
+
+    return $form['media']['container']['document']['extensions_wrapper'];
   }
 
   /**
@@ -139,6 +230,15 @@ class AttachmentForm extends FormBase {
     return $types;
   }
 
+  public function getSourceFieldInfos($media_type) {
+    $media_type = $this->entityTypeManager->getStorage('media_type')->load($media_type);
+    $field_definition = $media_type->getSource()->getSourceFieldDefinition($media_type);
+    return [
+      'name' => $field_definition->getName(),
+      'supported_extensions' => $field_definition->getSetting('file_extensions'),
+    ];
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -147,6 +247,14 @@ class AttachmentForm extends FormBase {
     $cached_values['default_destination'] = $form_state->getValue('default_destination');
     $cached_values['use_media'] = $form_state->getValue('use_media');
     $cached_values['image_media_type'] = $form_state->getValue('image_media_type');
+    $cached_values['image_media_type_field'] = $this->getSourceFieldInfos($cached_values['image_media_type'])['name'];
+    $cached_values['image_media_extensions'] = $form_state->getValue('image_media_extensions');
+    $cached_values['audio_media_type'] = $form_state->getValue('audio_media_type');
+    $cached_values['audio_media_type_field'] = $this->getSourceFieldInfos($cached_values['audio_media_type'])['name'];
+    $cached_values['audio_media_extensions'] = $form_state->getValue('audio_media_extensions');
+    $cached_values['document_media_type'] = $form_state->getValue('document_media_type');
+    $cached_values['document_media_type_field'] = $this->getSourceFieldInfos($cached_values['document_media_type'])['name'];
+    $cached_values['document_media_extensions'] = $form_state->getValue('document_media_extensions');
     $form_state->setTemporaryValue('wizard', $cached_values);
   }
 
