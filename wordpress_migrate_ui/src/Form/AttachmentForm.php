@@ -231,11 +231,17 @@ class AttachmentForm extends FormBase {
   }
 
   public function getSourceFieldInfos($media_type) {
-    $media_type = $this->entityTypeManager->getStorage('media_type')->load($media_type);
-    $field_definition = $media_type->getSource()->getSourceFieldDefinition($media_type);
+    if (!empty($media_type)) {
+      $media_type = $this->entityTypeManager->getStorage('media_type')->load($media_type);
+      $field_definition = $media_type->getSource()->getSourceFieldDefinition($media_type);
+      return [
+        'name' => $field_definition->getName(),
+        'supported_extensions' => $field_definition->getSetting('file_extensions'),
+      ];
+    }
     return [
-      'name' => $field_definition->getName(),
-      'supported_extensions' => $field_definition->getSetting('file_extensions'),
+      'name' => '',
+      'supported_extensions' => '',
     ];
   }
 
