@@ -430,10 +430,12 @@ class WordPressMigrationGenerator {
    */
   public function alterMigration(MigrationInterface &$migration, $wordpress_type) {
     foreach ($this->configuration['extensions'] as $extension) {
-      $instance_plugin = \Drupal::service('plugin.manager.wordpress_migration_extension_plugin')->createInstance($extension, []);
-      $allowed_content = $instance_plugin->getApplicableContent();
-      if (in_array($wordpress_type, $allowed_content) && $instance_plugin->isActive($this->configuration)) {
-        $instance_plugin->alterMigration($migration);
+      if (!empty($extension)) {
+        $instance_plugin = \Drupal::service('plugin.manager.wordpress_migration_extension_plugin')->createInstance($extension, []);
+        $allowed_content = $instance_plugin->getApplicableContent();
+        if (in_array($wordpress_type, $allowed_content) && $instance_plugin->isActive($this->configuration)) {
+          $instance_plugin->alterMigration($migration);
+        }
       }
     }
   }
