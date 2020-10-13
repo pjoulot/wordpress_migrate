@@ -43,9 +43,7 @@ source:
     -
       name: alt
       label: Alt text for an image
-      # @todo: Make sure wp:meta_key is _wp_attachment_image_alt
-      # @link https://www.drupal.org/node/2742275
-      selector: wp:postmeta/wp:meta_value
+      selector: wp:postmeta[wp:meta_key='_wp_attachment_image_alt']/wp:meta_value
   ids:
     post_id:
       type: integer
@@ -69,6 +67,11 @@ process:
     plugin: migration_lookup
     migration: wordpress_attachments
     source: post_id
+  field_media_image/alt:
+    -
+      plugin: default_value
+      default_value: title
+      source: alt
   thumbnail/target_id:
     plugin: migration_lookup
     migration: wordpress_attachments

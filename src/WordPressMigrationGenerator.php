@@ -141,6 +141,12 @@ class WordPressMigrationGenerator {
     $this->attachmentID = $this->configuration['prefix'] . 'wordpress_attachments';
     $migration = static::createEntityFromPlugin('wordpress_attachments', $this->attachmentID);
     $migration->set('migration_group', $this->configuration['group_id']);
+    // If the location is filled, override it.
+    if (!empty($this->configuration['default_destination'])) {
+      $source = $migration->get('source');
+      $source['constants']['file_dest_uri'] = $this->configuration['default_destination'];
+      $migration->set('source', $source);
+    }
     $process = $migration->get('process');
     $process['uid'] = $this->uidMapping;
     $migration->set('process', $process);
