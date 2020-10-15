@@ -252,12 +252,13 @@ class WordPressMigrationGenerator {
     $migration->set('migration_group', $this->configuration['group_id']);
     $source                   = $migration->get('source');
     $source['item_selector'] .= '[wp:post_type="' . $wordpress_type . '"]';
+    $source['constants']['base_url'] = $this->configuration['base_url'];
     $migration->set('source', $source);
     $process                = $migration->get('process');
     $process['path/alias'][] = [
       'plugin' => 'skip_on_empty',
       'method' => 'process',
-      'source' => $this->configuration['base_url'],
+      'source' => 'constants/base_url',
     ];
     $process['path/alias'][] = [
       'plugin' => 'str_replace',
